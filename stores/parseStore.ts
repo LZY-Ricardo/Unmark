@@ -24,7 +24,8 @@ export const useParseStore = create<ParseStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      const response = await fetch('/api/parse', {
+      // 使用无Cookie模式
+      const response = await fetch('/api/parse-no-cookie', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -35,7 +36,7 @@ export const useParseStore = create<ParseStore>((set, get) => ({
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        throw new Error(data.error?.message || '解析失败');
+        throw new Error(data.error || '解析失败');
       }
 
       set({ result: data.data, isLoading: false });

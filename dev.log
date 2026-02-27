@@ -1,0 +1,22 @@
+
+> unmark@0.1.0 dev F:\myProjects\Unmark
+> next dev
+
+ ⚠ Port 3000 is in use by process 42220, using available port 3002 instead.
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3002
+   - Network:      http://26.41.1.123:3002
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 4.4s
+ ○ Compiling / ...
+ ✓ Compiled / in 4.8s (582 modules)
+ GET / 200 in 5312ms
+ ✓ Compiled in 623ms (249 modules)
+ ✓ Compiled /api/parse-no-cookie in 315ms (339 modules)
+ POST /api/parse-no-cookie 200 in 1357ms
+ POST /api/parse-no-cookie 200 in 883ms
+ POST /api/parse-no-cookie 200 in 1024ms

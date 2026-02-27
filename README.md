@@ -24,6 +24,7 @@
 - ✅ **一键下载** - 批量下载图集中的所有图片
 - ✅ **智能提取** - 自动从分享口令中提取链接
 - ✅ **真实文件下载** - 使用 Fetch + Blob 实现真正的跨域下载
+- ✅ **无Cookie模式** - 完全无需Cookie，零配置使用
 
 ### 🎨 用户体验
 - **像素级设计** - 复刻 [ai.codefather.cn/painting](https://ai.codefather.cn/painting) 的UI风格
@@ -36,8 +37,7 @@
 - **开发语言**: TypeScript 5.0+
 - **样式方案**: Tailwind CSS 3.4+
 - **状态管理**: Zustand
-- **爬虫引擎**: [Evil0ctal/Douyin_TikTok_Download_API](https://github.com/Evil0ctal/Douyin_TikTok_Download_API)
-- **容器化**: Docker & Docker Compose
+- **解析模式**: 无Cookie HTML解析（完全开源实现）
 
 ---
 
@@ -46,7 +46,6 @@
 ### 环境要求
 - Node.js 18.17+
 - pnpm 8+ (推荐) 或 npm/yarn
-- Docker Desktop (用于后端API)
 
 ### 1. 克隆项目
 
@@ -68,56 +67,14 @@ npm install
 yarn install
 ```
 
-### 3. 配置环境变量
-
-复制环境变量模板：
-```bash
-cp .env.example .env.local
-```
-
-编辑 `.env.local`：
-```bash
-# 后端API地址
-DOUYIN_API_URL=http://localhost:8080
-
-# 模拟模式（用于前端测试，无需 Docker）
-# MOCK_MODE=true
-```
-
-### 4. 启动Docker容器
+### 3. 配置环境变量（可选）
 
 ```bash
-# 启动后端API服务
-docker compose up -d
-
-# 查看容器状态
-docker ps
-
-# 查看日志
-docker logs unmark-douyin-api-1 -f
+# 如需自定义端口，可创建 .env.local
+echo "PORT=3001" > .env.local
 ```
 
-### 5. 配置Cookie（重要！）
-
-抖音API需要有效Cookie才能正常工作。请按照以下步骤配置：
-
-#### 详细步骤：
-1. 在浏览器中打开 https://www.douyin.com 并登录
-2. 按 `F12` 打开开发者工具
-3. 切换到 `Console` 标签
-4. 输入并执行：`document.cookie`
-5. 复制显示的Cookie字符串
-6. 打开 `config.yaml` 文件
-7. 找到 `Cookie:` 行（第11行）
-8. 替换为您的Cookie
-9. 重启容器：`docker compose restart douyin-api`
-
-**注意事项：**
-- Cookie会定期过期（几小时到几天）
-- 解析失败时需要重新获取Cookie
-- 确保Cookie包含必需字段：`__ac_nonce`、`__ac_signature`、`ttwid`、`s_v_web_id`、`IsDouyinActive`
-
-### 6. 启动开发服务器
+### 4. 启动开发服务器
 
 ```bash
 # 启动Next.js开发服务器
@@ -224,6 +181,8 @@ pnpm format          # 代码格式化
 
 ## 📚 相关文档
 
+- **[NO_COOKIE_MODE.md](NO_COOKIE_MODE.md)** - 无Cookie模式技术说明 ⭐ 新功能
+- **[UPDATE_v1.1.0.md](UPDATE_v1.1.0.md)** - v1.1.0 更新日志 ⭐ 最新版本
 - **[USAGE.md](USAGE.md)** - 详细使用指南
 - **[SOLUTION.md](SOLUTION.md)** - 问题解决方案
 - **[DOWNLOAD_FIX.md](DOWNLOAD_FIX.md)** - 下载功能修复说明
@@ -241,21 +200,25 @@ pnpm format          # 代码格式化
 - [x] 阶段 5: 响应式适配
 - [x] 阶段 6: 智能URL提取功能
 - [x] 阶段 7: 图片/视频下载优化
-- [ ] 阶段 8: 自动化测试（待开发）
-- [ ] 阶段 9: 生产环境部署（待开发）
+- [x] 阶段 8: **无Cookie模式实现** ⭐ v1.1.0
+- [ ] 阶段 9: 自动化测试（待开发）
+- [ ] 阶段 10: 生产环境部署（待开发）
 
 ---
 
 ## 🐛 常见问题
 
-### 1. 解析失败："API 返回错误 400"
+### 1. 解析失败："无法解析链接"
 
-**原因：** Cookie已过期或配置不正确
+**可能原因：**
+- 链接格式不正确
+- 内容需要登录才能查看
+- 抖音服务器暂时不可用
 
 **解决方案：**
-- 按照"配置Cookie"章节重新获取Cookie
-- 确保Cookie包含所有必需字段
-- 重启Docker容器：`docker compose restart douyin-api`
+- 确保使用抖音分享链接或完整分享口令
+- 检查内容是否为公开内容
+- 稍后重试
 
 ### 2. 图片下载会打开新页面
 
@@ -265,36 +228,23 @@ pnpm format          # 代码格式化
 - 已使用 Fetch + Blob 方式修复
 - 如果仍有问题，检查浏览器控制台错误信息
 
-### 3. Docker容器无法启动
+### 3. 中文显示乱码
 
-**原因：** 端口冲突或配置文件错误
+**原因：** 终端编码问题
+
+**解决方案：**
+- 在浏览器中使用（推荐）
+- 或设置终端为UTF-8编码
+
+### 4. 端口被占用
+
+**错误信息：** `Port 3000 is in use`
 
 **解决方案：**
 ```bash
-# 检查端口占用
-netstat -ano | findstr :8080
-
-# 检查配置文件语法
-docker compose config
-
-# 查看详细错误
-docker compose logs
-```
-
-### 4. 前端无法连接后端API
-
-**原因：** 容器未启动或端口配置错误
-
-**解决方案：**
-```bash
-# 检查容器状态
-docker ps
-
-# 检查端口映射
-docker port unmark-douyin-api-1
-
-# 测试API
-curl http://localhost:8080/docs
+# Next.js 会自动使用其他端口（如3001、3002）
+# 或者手动指定端口
+pnpm dev -- -p 3001
 ```
 
 ---
@@ -325,6 +275,8 @@ curl http://localhost:8080/docs
 
 **Made with ❤️**
 
-**最后更新**: 2026-02-27 | **版本**: 1.0.0
+**最后更新**: 2026-02-27 | **版本**: 1.1.0 (无Cookie模式)
+
+**[🎉 v1.1.0 更新日志](UPDATE_v1.1.0.md)** - 完全无需Cookie！
 
 </div>
