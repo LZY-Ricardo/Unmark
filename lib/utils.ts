@@ -57,14 +57,62 @@ export function formatErrorMessage(error: any): string {
 }
 
 /**
- * 下载文件
+ * 下载文件（支持跨域图片）
  */
-export function downloadFile(url: string, filename: string) {
-  const link = document.createElement('a');
-  link.href = url;
-  link.download = filename;
-  link.target = '_blank';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+export async function downloadFile(url: string, filename: string) {
+  try {
+    // 使用 fetch 获取图片数据
+    const response = await fetch(url, {
+      mode: 'cors',
+      credentials: 'omit',
+    });
+
+    if (!response.ok) {
+      throw new Error('下载失败');
+    }
+
+    // 获取 blob 数据
+    const blob = await response.blob();
+
+    // 创建 object URL
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    // 创建下载链接
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+
+    // 清理
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (error) {
+    console.error('下载失败:', error);
+
+    // 降级方案：直接在新标签页打开图片
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+}
+
+/**
+ * 下载图片（带编号和标题）
+ */
+export async function downloadImage(url: string, title: string, index: number) {
+  // 从URL中提取文件扩展名
+  const urlParts = url.split('.');
+  const extension = urlParts[urlParts.length - 1].split('?')[0] || 'jpg';
+
+  // 清理文件名中的非法字符
+  const cleanTitle = title.replace(/[<>:"/\\|?*]/g, '_').substring(0, 50);
+
+  // 生成文件名
+  const filename = `${cleanTitle}_${index + 1}.${extension}`;
+
+  await downloadFile(url, filename);
 }

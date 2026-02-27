@@ -76,7 +76,18 @@
       "Bash(curl -X POST http://localhost:3001/api/parse -H \"Content-Type: application/json\" -d '{\"\"url\"\":\"\"https://v.douyin.com/4evJ3qVn5HA/\"\"}')",
       "Bash(python3 -c \":*)",
       "Bash(curl -X POST http://localhost:3001/api/parse -H \"Content-Type: application/json\" -d '{\"\"url\"\":\"\"2.07 复制打开抖音，看看【ACEn的图文作品】喜欢这样的世界 但世界不喜欢我。# 上杉绘梨衣 #... https://v.douyin.com/4evJ3qVn5HA/ 09/14 h@O.XM qRk:/\"\"}')",
-      "Bash(python3 -c \"import json, sys; data=json.load\\(sys.stdin\\); print\\(json.dumps\\({''success'': data[''success''], ''type'': data.get\\(''data'', {}\\).get\\(''type''\\), ''title'': data.get\\(''data'', {}\\).get\\(''title'', ''''\\)[:30]+''...''}, ensure_ascii=False\\)\\)\")"
+      "Bash(python3 -c \"import json, sys; data=json.load\\(sys.stdin\\); print\\(json.dumps\\({''success'': data[''success''], ''type'': data.get\\(''data'', {}\\).get\\(''type''\\), ''title'': data.get\\(''data'', {}\\).get\\(''title'', ''''\\)[:30]+''...''}, ensure_ascii=False\\)\\)\")",
+      "Bash(test -f f:/myProjects/Unmark/README.md)",
+      "Bash(curl -s \"https://api.github.com/repos/JoeanAmier/TikTokDownloader\")",
+      "Bash(curl -s \"https://api.github.com/repos/Evil0ctal/Douyin_TikTok_Download_API\")",
+      "Bash(curl -s \"https://api.github.com/repos/JoeanAmier/TikTokDownloader/readme\")",
+      "Bash(curl -s \"https://m.douyin.com\")",
+      "Bash(python test_no_cookie.py)",
+      "Bash(python debug_html.py)",
+      "Bash(python -c \"import re; content = open\\(''douyin.html'', ''r'', encoding=''utf-8''\\).read\\(\\); matches = re.findall\\(r''self\\\\.__next_f\\\\s*=\\\\s*\\(\\\\[.*?\\\\]\\)'', content, re.DOTALL\\); print\\(f''Found {len\\(matches\\)} matches''\\); print\\(matches[0][:500] if matches else ''None''\\)\")",
+      "Bash(python -c \":*)",
+      "Bash(python extract_router_data.py)",
+      "Bash(python extract_router_data2.py)"
     ]
   }
 }

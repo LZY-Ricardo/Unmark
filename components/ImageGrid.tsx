@@ -4,6 +4,7 @@ import { ImagesResult } from '@/types';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/Card';
 import { Button } from './ui/Button';
 import { useState } from 'react';
+import { downloadImage } from '@/lib/utils';
 
 interface ImageGridProps {
   result: ImagesResult;
@@ -11,22 +12,39 @@ interface ImageGridProps {
 
 export function ImageGrid({ result }: ImageGridProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
+  const [downloadingAll, setDownloadingAll] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState(0);
 
-  const handleDownloadSingle = (imageUrl: string, index: number) => {
-    const link = document.createElement('a');
-    link.href = imageUrl;
-    link.download = `image_${index + 1}.jpg`;
-    link.target = '_blank';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownloadSingle = async (imageUrl: string, index: number) => {
+    setDownloadingIndex(index);
+    try {
+      await downloadImage(imageUrl, result.title || 'douyin_images', index);
+    } catch (error) {
+      console.error('下载失败:', error);
+      // 降级：在新标签页打开
+      window.open(imageUrl, '_blank');
+    } finally {
+      setDownloadingIndex(null);
+    }
   };
 
   const handleDownloadAll = async () => {
-    for (let i = 0; i < result.images.length; i++) {
-      setTimeout(() => {
-        handleDownloadSingle(result.images[i], i);
-      }, i * 500); // 每张图片间隔 500ms
+    setDownloadingAll(true);
+    setDownloadProgress(0);
+
+    try {
+      for (let i = 0; i < result.images.length; i++) {
+        await handleDownloadSingle(result.images[i], i);
+        setDownloadProgress(i + 1);
+        // 每张图片间隔 300ms，避免浏览器阻止多个下载
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
+    } catch (error) {
+      console.error('批量下载失败:', error);
+    } finally {
+      setDownloadingAll(false);
+      setDownloadProgress(0);
     }
   };
 
@@ -71,12 +89,14 @@ export function ImageGrid({ result }: ImageGridProps) {
                   <Button
                     size="sm"
                     variant="primary"
+                    isLoading={downloadingIndex === index}
+                    disabled={downloadingIndex !== null}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDownloadSingle(imageUrl, index);
                     }}
                   >
-                    保存
+                    {downloadingIndex === index ? '下载中...' : '保存'}
                   </Button>
                 </div>
                 <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
@@ -89,6 +109,8 @@ export function ImageGrid({ result }: ImageGridProps) {
           {/* 一键下载全部 */}
           <Button
             onClick={handleDownloadAll}
+            isLoading={downloadingAll}
+            disabled={downloadingAll || downloadingIndex !== null}
             variant="primary"
             size="lg"
             className="w-full"
@@ -106,7 +128,9 @@ export function ImageGrid({ result }: ImageGridProps) {
                 d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
               />
             </svg>
-            一键下载全部
+            {downloadingAll
+              ? `下载中 (${downloadProgress}/${result.images.length})`
+              : '一键下载全部'}
           </Button>
 
           <p className="text-xs text-text-secondary text-center">
