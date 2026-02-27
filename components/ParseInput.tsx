@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { useParseStore } from '@/stores/parseStore';
-import { isValidDouyinUrl } from '@/lib/utils';
+import { isValidDouyinUrl, extractDouyinUrl } from '@/lib/utils';
 
 export function ParseInput() {
   const [url, setUrl] = useState('');
@@ -22,21 +22,27 @@ export function ParseInput() {
   }, []);
 
   const handleSubmit = async () => {
-    const validationError = validateUrl(url);
+    // 自动提取URL（支持粘贴完整分享口令）
+    const extractedUrl = extractDouyinUrl(url);
+
+    const validationError = validateUrl(extractedUrl);
     if (validationError) {
       setError(validationError);
       return;
     }
 
     setError('');
-    await parseUrl(url);
+    await parseUrl(extractedUrl);
   };
 
   const handlePaste = useCallback(async () => {
     try {
       const text = await navigator.clipboard.readText();
-      setUrl(text);
-      const validationError = validateUrl(text);
+      // 自动从分享口令中提取URL
+      const extractedUrl = extractDouyinUrl(text);
+      setUrl(extractedUrl);
+
+      const validationError = validateUrl(extractedUrl);
       if (validationError) {
         setError(validationError);
       } else {
@@ -61,10 +67,13 @@ export function ParseInput() {
             type="text"
             value={url}
             onChange={(e) => {
-              setUrl(e.target.value);
+              const value = e.target.value;
+              // 自动提取URL（支持粘贴完整分享口令）
+              const extractedUrl = extractDouyinUrl(value);
+              setUrl(extractedUrl);
               if (error) setError('');
             }}
-            placeholder="粘贴抖音分享链接（如：https://v.douyin.com/xxxxx/）"
+            placeholder="粘贴抖音分享链接或完整分享口令（如：2.07 复制打开抖音... https://v.douyin.com/xxxxx/ ...）"
             error={error}
             disabled={isLoading}
             onKeyDown={(e) => {

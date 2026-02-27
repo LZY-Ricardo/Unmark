@@ -20,6 +20,8 @@ services:
     image: evil0ctal/douyin_tiktok_download_api:latest
     ports:
       - "8080:80"  # 容器内部端口 80，映射到主机 8080
+    volumes:
+      - ./config.yaml:/app/crawlers/douyin/web/config.yaml:ro  # 挂载配置文件
     restart: unless-stopped
     networks:
       - unmark-network

@@ -37,7 +37,7 @@ const mockImagesData = {
  * 将开源 API 响应转换为我们的格式
  */
 function transformApiResponse(apiData: any): any {
-  const awemeDetail = apiData?.aweme_detail;
+  const awemeDetail = apiData?.data;
   if (!awemeDetail) {
     throw new Error('API 返回数据格式不正确');
   }
@@ -102,9 +102,26 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 2. 验证是否为抖音链接
+    // 2. 从分享口令中提取URL（如果用户粘贴了完整分享口令）
+    const urlRegex = /(https?:\/\/)?(v\.douyin\.com|douyin\.com)\/[a-zA-Z0-9\/]+/;
+    const match = url.match(urlRegex);
+    let cleanUrl = url;
+
+    if (match && match[0]) {
+      cleanUrl = match[0];
+      // 确保URL以http开头
+      if (!cleanUrl.startsWith('http')) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+      // 确保URL以/结尾
+      if (!cleanUrl.endsWith('/')) {
+        cleanUrl += '/';
+      }
+    }
+
+    // 3. 验证是否为抖音链接
     const douyinRegex = /(douyin\.com|v\.douyin\.com)/i;
-    if (!douyinRegex.test(url)) {
+    if (!douyinRegex.test(cleanUrl)) {
       return NextResponse.json({
         success: false,
         error: {
@@ -114,9 +131,9 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // 3. 模拟模式：返回假数据
+    // 4. 模拟模式：返回假数据
     if (MOCK_MODE) {
-      const isVideo = !url.includes('note');
+      const isVideo = !cleanUrl.includes('note');
       await new Promise(resolve => setTimeout(resolve, 1000));
 
       return NextResponse.json({
@@ -126,12 +143,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // 4. 真实模式：使用混合解析端点
+    // 5. 真实模式：使用混合解析端点
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT);
 
     try {
-      const apiUrl = `${DOUYIN_API_URL}/api/hybrid/video_data?url=${encodeURIComponent(url)}&minimal=false`;
+      const apiUrl = `${DOUYIN_API_URL}/api/hybrid/video_data?url=${encodeURIComponent(cleanUrl)}&minimal=false`;
 
       const response = await fetch(apiUrl, {
         headers: {
