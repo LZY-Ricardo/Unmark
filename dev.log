@@ -20,3 +20,6 @@
  POST /api/parse-no-cookie 200 in 1357ms
  POST /api/parse-no-cookie 200 in 883ms
  POST /api/parse-no-cookie 200 in 1024ms
+ ✓ Compiled in 1386ms (250 modules)
+ ✓ Compiled /api/parse in 491ms (339 modules)
+ POST /api/parse 200 in 3608ms

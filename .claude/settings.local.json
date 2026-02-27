@@ -94,7 +94,8 @@
       "Bash(python test_video.py)",
       "Bash(python test_final.py)",
       "Bash(ls -la *.md)",
-      "Bash(ls -lh *.md)"
+      "Bash(ls -lh *.md)",
+      "Bash(cat:*)"
     ]
   }
 }
