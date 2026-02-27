@@ -95,7 +95,9 @@
       "Bash(python test_final.py)",
       "Bash(ls -la *.md)",
       "Bash(ls -lh *.md)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(curl -X POST http://localhost:3004/api/parse-no-cookie -H \"Content-Type: application/json\" -d \"{\"\"url\"\":\"\"https://v.douyin.com/4evJ3qVn5HA/\"\"}\" --max-time 10)",
+      "Bash(curl -s http://localhost:3004)"
     ]
   }
 }

@@ -1,0 +1,29 @@
+
+> unmark@0.1.0 dev F:\myProjects\Unmark
+> next dev
+
+ ⚠ Port 3000 is in use by process 68504, using available port 3004 instead.
+   ▲ Next.js 15.5.12
+   - Local:        http://localhost:3004
+   - Network:      http://26.41.1.123:3004
+   - Environments: .env.local
+   - Experiments (use with caution):
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 4.6s
+ ○ Compiling /api/parse-no-cookie ...
+ ✓ Compiled /api/parse-no-cookie in 798ms (298 modules)
+ POST /api/parse-no-cookie 200 in 2347ms
+ ○ Compiling / ...
+ ✓ Compiled / in 2.7s (583 modules)
+ GET / 200 in 3184ms
+ ✓ Compiled in 600ms (250 modules)
+ GET / 200 in 105ms
+ ✓ Compiled /api/parse-no-cookie in 284ms (353 modules)
+ POST /api/parse-no-cookie 200 in 2097ms
+ ✓ Compiled in 479ms (589 modules)
+ ✓ Compiled /_not-found in 473ms (594 modules)
+ GET / 404 in 692ms
+ GET / 200 in 297ms
+ ELIFECYCLE  Command failed with exit code 4294967295.
