@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    depends_on:
+      - douyin-api
+    environment:
+      - DOUYIN_API_URL=http://douyin-api:8080
+      - NODE_ENV=production
+    restart: unless-stopped
+    networks:
+      - unmark-network
+
+  douyin-api:
+    image: evil0ctal/douyin_tiktok_download_api:latest
+    ports:
+      - "8080:80"  # 容器内部端口 80，映射到主机 8080
+    restart: unless-stopped
+    networks:
+      - unmark-network
+
+networks:
+  unmark-network:
+    driver: bridge
