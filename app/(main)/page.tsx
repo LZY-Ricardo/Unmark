@@ -30,7 +30,7 @@ export default function HomePage() {
           <section className="text-center mb-10 md:mb-12 animate-fade-in">
             <div className="inline-flex items-center gap-2 rounded-full border border-accent/25 bg-white/75 px-4 py-1.5 text-xs text-text-secondary mb-5">
               <span className="w-2 h-2 rounded-full bg-accent" />
-              新版解析流已支持抖音 + 小红书
+              新版解析流已支持抖音 + 小红书 + 快手
             </div>
 
             <h1 className="text-4xl md:text-6xl font-semibold tracking-tight text-primary">

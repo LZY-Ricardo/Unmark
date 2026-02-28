@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   frontend:
     build:
@@ -9,8 +7,12 @@ services:
       - "3000:3000"
     depends_on:
       - douyin-api
+      - kuaishou-api
     environment:
       - DOUYIN_API_URL=http://douyin-api:8080
+      - KUAISHOU_API_URL=http://kuaishou-api:5557
+      - KUAISHOU_COOKIE=${KUAISHOU_COOKIE:-}
+      - KUAISHOU_PROXY=${KUAISHOU_PROXY:-}
       - NODE_ENV=production
     restart: unless-stopped
     networks:
@@ -26,6 +28,20 @@ services:
     networks:
       - unmark-network
 
+  kuaishou-api:
+    image: joeanamier/ks-downloader:latest
+    command: ["python", "main.py", "api", "--host", "0.0.0.0", "--port", "5557"]
+    ports:
+      - "5557:5557"
+    volumes:
+      - ks_downloader_volume:/app/Volume
+    restart: unless-stopped
+    networks:
+      - unmark-network
+
 networks:
   unmark-network:
     driver: bridge
+
+volumes:
+  ks_downloader_volume:

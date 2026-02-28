@@ -37,6 +37,9 @@ export default function MainLayout({
                 <span className="inline-flex items-center rounded-full border border-[#ff7a0028] bg-[#ff7a0012] px-2 py-0.5 text-[11px] font-medium text-[#d66a13]">
                   小红书
                 </span>
+                <span className="inline-flex items-center rounded-full border border-[#16a34a2a] bg-[#16a34a14] px-2 py-0.5 text-[11px] font-medium text-[#15803d]">
+                  快手
+                </span>
                 <span className="text-xs text-text-secondary px-1">无水印解析</span>
               </div>
 

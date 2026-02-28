@@ -13,10 +13,10 @@ export function ParseInput() {
 
   const validateUrl = useCallback((value: string) => {
     if (!value.trim()) {
-      return '请输入抖音或小红书链接';
+      return '请输入抖音、小红书或快手链接';
     }
     if (!isValidSupportedUrl(value)) {
-      return '请输入有效的抖音或小红书链接';
+      return '请输入有效的抖音、小红书或快手链接';
     }
     return '';
   }, []);
@@ -65,6 +65,7 @@ export function ParseInput() {
         <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
           <span className="px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">抖音</span>
           <span className="px-3 py-1 rounded-full bg-[#ff6a0012] text-[#d66a13] border border-[#ff6a0028]">小红书</span>
+          <span className="px-3 py-1 rounded-full bg-[#16a34a14] text-[#15803d] border border-[#16a34a2a]">快手</span>
           <span className="text-text-secondary ml-auto">粘贴分享文案也会自动提取链接</span>
         </div>
 
@@ -80,7 +81,7 @@ export function ParseInput() {
                 setUrl(extractedUrl);
                 if (error) setError('');
               }}
-              placeholder="粘贴抖音或小红书分享链接（支持分享文案中自动提取链接）"
+              placeholder="粘贴抖音、小红书或快手分享链接（支持分享文案中自动提取链接）"
               error={error}
               disabled={isLoading}
               className="h-12"

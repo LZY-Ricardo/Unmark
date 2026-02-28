@@ -3,6 +3,8 @@ import { twMerge } from 'tailwind-merge';
 
 const DOUYIN_URL_REGEX = /(https?:\/\/)?(?:v\.douyin\.com|www\.douyin\.com|douyin\.com)\/[^\s]+/i;
 const XHS_URL_REGEX = /(https?:\/\/)?(?:www\.)?(?:xiaohongshu\.com|xhslink\.com)\/[^\s]+/i;
+const KUAISHOU_URL_REGEX =
+  /(https?:\/\/)?(?:v\.kuaishou\.com|www\.kuaishou\.com|kuaishou\.com|kuaishou\.cn|live\.kuaishou\.com)\/[^\s]+/i;
 
 /**
  * 合并 Tailwind CSS 类名
@@ -46,7 +48,26 @@ export function isValidDouyinUrl(url: string): boolean {
 }
 
 /**
- * 从文本中提取支持的平台链接（抖音/小红书）
+ * 从快手分享口令中提取 URL
+ */
+export function extractKuaishouUrl(text: string): string {
+  const match = text.match(KUAISHOU_URL_REGEX);
+
+  if (match && match[0]) {
+    let url = trimTrailingPunctuation(match[0]);
+
+    if (!url.startsWith('http')) {
+      url = 'https://' + url;
+    }
+
+    return url;
+  }
+
+  return text;
+}
+
+/**
+ * 从文本中提取支持的平台链接（抖音/小红书/快手）
  */
 export function extractSupportedUrl(text: string): string {
   const douyinUrl = extractDouyinUrl(text);
@@ -55,22 +76,27 @@ export function extractSupportedUrl(text: string): string {
   }
 
   const xhsMatched = text.match(XHS_URL_REGEX);
-  if (!xhsMatched?.[0]) {
-    return text;
+  if (xhsMatched?.[0]) {
+    let url = trimTrailingPunctuation(xhsMatched[0]);
+    if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
+    return url;
   }
 
-  let url = trimTrailingPunctuation(xhsMatched[0]);
-  if (!url.startsWith('http')) {
-    url = `https://${url}`;
+  const kuaishouUrl = extractKuaishouUrl(text);
+  if (kuaishouUrl !== text) {
+    return kuaishouUrl;
   }
-  return url;
+
+  return text;
 }
 
 /**
  * 校验是否为当前支持的平台链接
  */
 export function isValidSupportedUrl(url: string): boolean {
-  return DOUYIN_URL_REGEX.test(url) || XHS_URL_REGEX.test(url);
+  return DOUYIN_URL_REGEX.test(url) || XHS_URL_REGEX.test(url) || KUAISHOU_URL_REGEX.test(url);
 }
 
 function trimTrailingPunctuation(url: string): string {
