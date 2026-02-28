@@ -153,6 +153,7 @@ export function transformNoCookieResult(data: NoCookieVideoResult) {
   const isImages = !!data.images && data.images.length > 0;
 
   if (isImages) {
+    const images = data.images.map(img => img.url_list[0]).filter(Boolean);
     // 图集类型
     return {
       type: 'images' as const,
@@ -161,9 +162,13 @@ export function transformNoCookieResult(data: NoCookieVideoResult) {
         name: data.author.nickname,
         avatar: data.author.avatar_thumb.url_list[0] || '',
       },
-      images: data.images.map(img => img.url_list[0]),
+      cover: images[0] || '',
+      images,
     };
   } else {
+    const playUrl = data.video?.play_addr?.url_list[0] || '';
+    const noWatermarkVideoUrl = toNoWatermarkDouyinUrl(playUrl);
+
     // 视频类型
     return {
       type: 'video' as const,
@@ -172,8 +177,24 @@ export function transformNoCookieResult(data: NoCookieVideoResult) {
         name: data.author.nickname,
         avatar: data.author.avatar_thumb.url_list[0] || '',
       },
-      videoUrl: data.video?.play_addr?.url_list[0] || '',
+      videoUrl: noWatermarkVideoUrl,
       cover: data.video?.cover?.url_list[0] || '',
     };
+  }
+}
+
+function toNoWatermarkDouyinUrl(url: string): string {
+  if (!url) {
+    return '';
+  }
+
+  const replaced = url.replace('/playwm/', '/play/').replace('playwm', 'play');
+
+  try {
+    const parsed = new URL(replaced);
+    parsed.searchParams.delete('watermark');
+    return parsed.toString();
+  } catch {
+    return replaced.replace(/([?&])watermark=[^&]*/i, '').replace(/[?&]$/, '');
   }
 }

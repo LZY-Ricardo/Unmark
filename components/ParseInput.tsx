@@ -4,7 +4,7 @@ import { useState, useCallback } from 'react';
 import { Input } from './ui/Input';
 import { Button } from './ui/Button';
 import { useParseStore } from '@/stores/parseStore';
-import { isValidDouyinUrl, extractDouyinUrl } from '@/lib/utils';
+import { isValidSupportedUrl, extractSupportedUrl } from '@/lib/utils';
 
 export function ParseInput() {
   const [url, setUrl] = useState('');
@@ -13,17 +13,17 @@ export function ParseInput() {
 
   const validateUrl = useCallback((value: string) => {
     if (!value.trim()) {
-      return '请输入抖音链接';
+      return '请输入抖音或小红书链接';
     }
-    if (!isValidDouyinUrl(value)) {
-      return '请输入有效的抖音链接';
+    if (!isValidSupportedUrl(value)) {
+      return '请输入有效的抖音或小红书链接';
     }
     return '';
   }, []);
 
   const handleSubmit = async () => {
     // 自动提取URL（支持粘贴完整分享口令）
-    const extractedUrl = extractDouyinUrl(url);
+    const extractedUrl = extractSupportedUrl(url);
 
     const validationError = validateUrl(extractedUrl);
     if (validationError) {
@@ -39,7 +39,7 @@ export function ParseInput() {
     try {
       const text = await navigator.clipboard.readText();
       // 自动从分享口令中提取URL
-      const extractedUrl = extractDouyinUrl(text);
+      const extractedUrl = extractSupportedUrl(text);
       setUrl(extractedUrl);
 
       const validationError = validateUrl(extractedUrl);
@@ -69,11 +69,11 @@ export function ParseInput() {
             onChange={(e) => {
               const value = e.target.value;
               // 自动提取URL（支持粘贴完整分享口令）
-              const extractedUrl = extractDouyinUrl(value);
+              const extractedUrl = extractSupportedUrl(value);
               setUrl(extractedUrl);
               if (error) setError('');
             }}
-            placeholder="粘贴抖音分享链接或完整分享口令（如：2.07 复制打开抖音... https://v.douyin.com/xxxxx/ ...）"
+            placeholder="粘贴抖音或小红书分享链接（支持分享文案中自动提取链接）"
             error={error}
             disabled={isLoading}
             onKeyDown={(e) => {

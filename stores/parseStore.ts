@@ -24,8 +24,8 @@ export const useParseStore = create<ParseStore>((set, get) => ({
     set({ isLoading: true, error: null });
 
     try {
-      // 使用无Cookie模式
-      const response = await fetch('/api/parse-no-cookie', {
+      // 统一解析入口（自动识别平台）
+      const response = await fetch('/api/parse', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

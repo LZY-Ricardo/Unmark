@@ -4,19 +4,19 @@ import { ParseInput } from '@/components/ParseInput';
 import { VideoCard } from '@/components/VideoCard';
 import { ImageGrid } from '@/components/ImageGrid';
 import { useParseStore } from '@/stores/parseStore';
-import { useToast } from '@/stores/toastStore';
+import { useToastStore } from '@/stores/toastStore';
 import { useEffect } from 'react';
 
 export default function HomePage() {
   const { result, error } = useParseStore();
-  const { toast } = useToast();
+  const addToast = useToastStore((state) => state.addToast);
 
   // 显示错误提示
   useEffect(() => {
     if (error) {
-      toast(error, 'error');
+      addToast(error, 'error');
     }
-  }, [error, toast]);
+  }, [error, addToast]);
 
   return (
     <main className="min-h-[calc(100vh-4rem)]">
@@ -25,7 +25,7 @@ export default function HomePage() {
           {/* Hero 区域 */}
           <div className="text-center mb-12">
             <h1 className="text-4xl md:text-5xl font-bold text-primary mb-4">
-              输入抖音链接
+              输入抖音或小红书链接
               <span className="text-accent">一键解析下载</span>
             </h1>
             <p className="text-lg text-text-secondary max-w-2xl mx-auto">
