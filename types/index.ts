@@ -1,9 +1,7 @@
-// 解析请求
-export interface ParseRequest {
+﻿export interface ParseRequest {
   url: string;
 }
 
-// 视频结果
 export interface VideoResult {
   type: 'video';
   title: string;
@@ -15,7 +13,6 @@ export interface VideoResult {
   };
 }
 
-// 图集结果
 export interface ImagesResult {
   type: 'images';
   title: string;
@@ -27,32 +24,38 @@ export interface ImagesResult {
   };
 }
 
-// 解析结果（联合类型）
 export type ParseResult = VideoResult | ImagesResult;
 
-// API 响应
 export interface ApiResponse<T> {
   success: true;
   data: T;
-  message: string;
+  message?: string;
+  requestId?: string;
 }
 
-// API 错误
+export interface ApiErrorPayload {
+  code: ErrorCode | string;
+  message: string;
+  details?: unknown;
+}
+
 export interface ApiError {
   success: false;
-  error: {
-    code: ErrorCode;
-    message: string;
-    details?: string;
-  };
+  error: ApiErrorPayload | string;
+  requestId?: string;
 }
 
-// 错误码枚举
 export enum ErrorCode {
   INVALID_URL = 'INVALID_URL',
   NOT_DOUYIN_URL = 'NOT_DOUYIN_URL',
   PARSE_FAILED = 'PARSE_FAILED',
   TIMEOUT = 'TIMEOUT',
   RATE_LIMIT_EXCEEDED = 'RATE_LIMIT_EXCEEDED',
-  INTERNAL_ERROR = 'INTERNAL_ERROR'
+  INTERNAL_ERROR = 'INTERNAL_ERROR',
+  PAYWALL_REQUIRED = 'PAYWALL_REQUIRED',
+  FAIR_USE_SOFT_LIMITED = 'FAIR_USE_SOFT_LIMITED',
+  ORDER_NOT_FOUND = 'ORDER_NOT_FOUND',
+  ORDER_NOT_PAYABLE = 'ORDER_NOT_PAYABLE',
+  ORDER_ALREADY_FULFILLED = 'ORDER_ALREADY_FULFILLED',
+  WEBHOOK_SIGNATURE_INVALID = 'WEBHOOK_SIGNATURE_INVALID',
 }

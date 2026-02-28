@@ -1,134 +1,78 @@
-import { POST } from '@/app/api/parse/route'
+﻿import { consumeUsage } from '@/lib/billing/quota';
+import { getOrCreateUser } from '@/lib/billing/storage';
 
-// Mock fetch
-global.fetch = jest.fn()
+jest.mock('next/server', () => ({
+  NextRequest: class {},
+  NextResponse: {
+    json: (body: unknown, init?: { status?: number }) => ({
+      status: init?.status ?? 200,
+      json: async () => body,
+      cookies: {
+        set: jest.fn(),
+      },
+    }),
+  },
+}));
+
+let POST: (request: any) => Promise<any>;
+
+function createRequest(body: unknown, anonId = 'test-anon') {
+  return {
+    json: async () => body,
+    headers: {
+      get: (key: string) => (key === 'x-anon-id' ? anonId : null),
+    },
+    cookies: {
+      get: () => undefined,
+    },
+  } as any;
+}
 
 describe('/api/parse', () => {
+  beforeAll(async () => {
+    const route = await import('@/app/api/parse/route');
+    POST = route.POST;
+  });
+
   beforeEach(() => {
-    jest.clearAllMocks()
-    process.env.DOUYIN_API_URL = 'http://test-api:8080'
-  })
+    process.env.BILLING_ENABLED = 'false';
+    process.env.BILLING_FREE_DAILY_LIMIT = '1';
+    process.env.BILLING_EXPERIMENT_ENABLED = 'false';
+  });
 
-  it('returns error for missing URL', async () => {
-    const request = {
-      json: async () => ({ url: '' }),
-    } as any
+  it('returns INVALID_URL for missing URL', async () => {
+    const response = await POST(createRequest({ url: '' }));
+    const data = await response.json();
 
-    const response = await POST(request)
-    const data = await response.json()
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('INVALID_URL');
+  });
 
-    expect(response.status).toBe(400)
-    expect(data.success).toBe(false)
-    expect(data.error.code).toBe('INVALID_URL')
-  })
+  it('returns INVALID_URL for unsupported platform', async () => {
+    const response = await POST(createRequest({ url: 'https://google.com' }));
+    const data = await response.json();
 
-  it('validates Douyin URL format', async () => {
-    const request = {
-      json: async () => ({ url: 'https://google.com' }),
-    } as any
+    expect(response.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('INVALID_URL');
+  });
 
-    const response = await POST(request)
-    const data = await response.json()
+  it('returns PAYWALL_REQUIRED when free quota is exhausted', async () => {
+    process.env.BILLING_ENABLED = 'true';
 
-    expect(response.status).toBe(400)
-    expect(data.success).toBe(false)
-    expect(data.error.code).toBe('NOT_DOUYIN_URL')
-  })
+    const anonId = 'billing-user-1';
+    const user = await getOrCreateUser(anonId);
+    await consumeUsage(user.id);
 
-  it('accepts valid Douyin short URL', async () => {
-    const mockResponse = {
-      ok: true,
-      json: async () => ({
-        data: {
-          type: 'video',
-          title: '测试视频',
-          video_url: 'http://example.com/video.mp4',
-        },
-      }),
-    }
+    const response = await POST(
+      createRequest({ url: 'https://v.douyin.com/abc123/' }, anonId)
+    );
+    const data = await response.json();
 
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse)
-
-    const request = {
-      json: async () => ({ url: 'https://v.douyin.com/abc123/' }),
-    } as any
-
-    const response = await POST(request)
-    const data = await response.json()
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      'http://test-api:8080/api/parse',
-      expect.objectContaining({
-        method: 'POST',
-        headers: expect.objectContaining({
-          'Content-Type': 'application/json',
-          Referer: 'https://www.douyin.com/',
-        }),
-      })
-    )
-    expect(data.success).toBe(true)
-  })
-
-  it('handles timeout errors', async () => {
-    ;(global.fetch as jest.Mock).mockImplementationOnce(() =>
-      Promise.reject({
-        name: 'AbortError',
-      })
-    )
-
-    const request = {
-      json: async () => ({ url: 'https://v.douyin.com/abc123/' }),
-    } as any
-
-    const response = await POST(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(504)
-    expect(data.error.code).toBe('TIMEOUT')
-  })
-
-  it('handles API errors gracefully', async () => {
-    const mockResponse = {
-      ok: false,
-      status: 500,
-    }
-
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse)
-
-    const request = {
-      json: async () => ({ url: 'https://v.douyin.com/abc123/' }),
-    } as any
-
-    const response = await POST(request)
-    const data = await response.json()
-
-    expect(response.status).toBe(500)
-    expect(data.success).toBe(false)
-    expect(data.error.code).toBe('PARSE_FAILED')
-  })
-
-  it('adds anti-hotlinking headers', async () => {
-    const mockResponse = {
-      ok: true,
-      json: async () => ({ data: {} }),
-    }
-
-    ;(global.fetch as jest.Mock).mockResolvedValueOnce(mockResponse)
-
-    const request = {
-      json: async () => ({ url: 'https://v.douyin.com/abc123/' }),
-    } as any
-
-    await POST(request)
-
-    expect(global.fetch).toHaveBeenCalledWith(
-      expect.any(String),
-      expect.objectContaining({
-        headers: expect.objectContaining({
-          Referer: 'https://www.douyin.com/',
-          'User-Agent': expect.stringContaining('Mozilla'),
-        }),
-      })
-    )
-  })
-})
+    expect(response.status).toBe(402);
+    expect(data.success).toBe(false);
+    expect(data.error.code).toBe('PAYWALL_REQUIRED');
+    expect(Array.isArray(data.error.details.plans)).toBe(true);
+  });
+});

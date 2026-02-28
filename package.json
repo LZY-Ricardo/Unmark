@@ -9,10 +9,16 @@
     "lint": "next lint",
     "test": "jest",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "db:generate": "drizzle-kit generate",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "smoke:billing": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-billing.ps1"
   },
   "dependencies": {
+    "drizzle-orm": "^0.45.1",
     "next": "^15.1.0",
+    "postgres": "^3.4.8",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "zustand": "^5.0.11"
@@ -26,6 +32,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
     "clsx": "^2.1.0",
+    "drizzle-kit": "^0.31.9",
     "eslint": "^8",
     "eslint-config-next": "^15.1.0",
     "jest": "^30.2.0",

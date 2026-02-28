@@ -3,6 +3,7 @@
 import { ParseInput } from '@/components/ParseInput';
 import { VideoCard } from '@/components/VideoCard';
 import { ImageGrid } from '@/components/ImageGrid';
+import { PaywallModal } from '@/components/billing/PaywallModal';
 import { useParseStore } from '@/stores/parseStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useEffect } from 'react';
@@ -94,6 +95,7 @@ export default function HomePage() {
           )}
         </div>
       </div>
+      <PaywallModal />
     </main>
   )
 }
