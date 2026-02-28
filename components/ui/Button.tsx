@@ -20,19 +20,19 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     },
     ref
   ) => {
-    const baseStyles = 'inline-flex items-center justify-center rounded-full font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50';
+    const baseStyles = 'inline-flex items-center justify-center rounded-full font-medium transition-all duration-200 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/35 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 disabled:transform-none';
 
     const variantStyles = {
-      primary: 'bg-accent text-white hover:bg-accent/90 shadow-sm',
-      secondary: 'bg-background text-text-primary border border-border hover:bg-gray-50',
-      outline: 'border-2 border-accent text-accent hover:bg-accent/10',
-      ghost: 'text-text-secondary hover:text-text-primary hover:bg-gray-100',
+      primary: 'bg-gradient-to-r from-accent to-[#3f9bff] text-white shadow-[0_10px_24px_-16px_rgba(11,123,255,0.85)] hover:translate-y-[-1px] hover:shadow-[0_14px_30px_-16px_rgba(11,123,255,0.95)]',
+      secondary: 'bg-white text-text-primary border border-border hover:border-accent/35 hover:bg-[#f9fbff]',
+      outline: 'border-2 border-accent/55 text-accent hover:bg-accent/8',
+      ghost: 'text-text-secondary hover:text-text-primary hover:bg-[#edf3fb]',
     };
 
     const sizeStyles = {
       sm: 'h-9 px-4 text-sm',
       md: 'h-11 px-6 text-base',
-      lg: 'h-13 px-8 text-lg',
+      lg: 'h-12 px-8 text-base',
     };
 
     return (

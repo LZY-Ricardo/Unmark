@@ -60,59 +60,68 @@ export function ParseInput() {
   };
 
   return (
-    <div className="w-full max-w-2xl mx-auto">
-      <div className="flex gap-3">
-        <div className="flex-1">
-          <Input
-            type="text"
-            value={url}
-            onChange={(e) => {
-              const value = e.target.value;
-              // 自动提取URL（支持粘贴完整分享口令）
-              const extractedUrl = extractSupportedUrl(value);
-              setUrl(extractedUrl);
-              if (error) setError('');
-            }}
-            placeholder="粘贴抖音或小红书分享链接（支持分享文案中自动提取链接）"
-            error={error}
-            disabled={isLoading}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isLoading) {
-                handleSubmit();
-              }
-            }}
-          />
+    <div className="w-full max-w-3xl mx-auto">
+      <div className="glass-panel-strong rounded-3xl p-4 md:p-5 border border-border/80 shadow-[0_12px_28px_-22px_rgba(10,34,66,0.45)]">
+        <div className="flex flex-wrap items-center gap-2 mb-3 text-xs">
+          <span className="px-3 py-1 rounded-full bg-accent/10 text-accent border border-accent/20">抖音</span>
+          <span className="px-3 py-1 rounded-full bg-[#ff6a0012] text-[#d66a13] border border-[#ff6a0028]">小红书</span>
+          <span className="text-text-secondary ml-auto">粘贴分享文案也会自动提取链接</span>
         </div>
-        <Button
-          onClick={handleSubmit}
-          isLoading={isLoading}
-          disabled={isLoading}
-          className="px-8"
-        >
-          {isLoading ? '解析中...' : '立即解析'}
-        </Button>
-      </div>
 
-      <div className="flex gap-2 mt-3">
-        <button
-          onClick={handlePaste}
-          className="text-sm text-text-secondary hover:text-accent transition-colors"
-          disabled={isLoading}
-        >
-          📋 粘贴链接
-        </button>
-        {url && (
-          <>
-            <span className="text-text-secondary">•</span>
-            <button
-              onClick={handleClear}
-              className="text-sm text-text-secondary hover:text-error transition-colors"
+        <div className="flex flex-col md:flex-row gap-3">
+          <div className="flex-1">
+            <Input
+              type="text"
+              value={url}
+              onChange={(e) => {
+                const value = e.target.value;
+                // 自动提取URL（支持粘贴完整分享口令）
+                const extractedUrl = extractSupportedUrl(value);
+                setUrl(extractedUrl);
+                if (error) setError('');
+              }}
+              placeholder="粘贴抖音或小红书分享链接（支持分享文案中自动提取链接）"
+              error={error}
               disabled={isLoading}
-            >
-              🗑️ 清空
-            </button>
-          </>
-        )}
+              className="h-12"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isLoading) {
+                  handleSubmit();
+                }
+              }}
+            />
+          </div>
+          <Button
+            onClick={handleSubmit}
+            isLoading={isLoading}
+            disabled={isLoading}
+            className="md:px-8 min-w-[128px]"
+          >
+            {isLoading ? '解析中...' : '立即解析'}
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-3 mt-4 px-1">
+          <button
+            onClick={handlePaste}
+            className="text-sm text-text-secondary hover:text-accent transition-colors"
+            disabled={isLoading}
+          >
+            粘贴剪贴板
+          </button>
+          {url && (
+            <>
+              <span className="text-text-secondary/60">|</span>
+              <button
+                onClick={handleClear}
+                className="text-sm text-text-secondary hover:text-error transition-colors"
+                disabled={isLoading}
+              >
+                清空
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );

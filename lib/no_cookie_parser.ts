@@ -153,7 +153,7 @@ export function transformNoCookieResult(data: NoCookieVideoResult) {
   const isImages = !!data.images && data.images.length > 0;
 
   if (isImages) {
-    const images = data.images.map(img => img.url_list[0]).filter(Boolean);
+    const images = (data.images ?? []).map((img) => img.url_list[0]).filter(Boolean);
     // 图集类型
     return {
       type: 'images' as const,
