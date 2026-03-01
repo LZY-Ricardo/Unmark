@@ -11,6 +11,7 @@ import {
 import { consumeUsage, evaluateQuota, recordSoftLimitedUsage } from '@/lib/billing/quota';
 
 type AnyObject = Record<string, unknown>;
+const DEFAULT_UPSTREAM_TIMEOUT_MS = resolveUpstreamTimeoutMs();
 
 export async function POST(request: NextRequest) {
   let identity: RequestIdentity | null = null;
@@ -251,7 +252,10 @@ function getErrorStatus(message: string): number {
   if (
     message.includes('fetch failed') ||
     message.includes('ECONNREFUSED') ||
-    message.includes('后端API错误')
+    message.includes('后端API错误') ||
+    message.includes('超时') ||
+    normalized.includes('timed out') ||
+    normalized.includes('timeout')
   ) {
     return 503;
   }
@@ -324,7 +328,12 @@ async function parseWithBackend(url: string, platform: string): Promise<ParseRes
     minimal: 'false',
   });
 
-  const response = await fetch(`${backendUrl}/api/hybrid/video_data?${params.toString()}`);
+  const response = await fetchWithTimeout(
+    `${backendUrl}/api/hybrid/video_data?${params.toString()}`,
+    undefined,
+    DEFAULT_UPSTREAM_TIMEOUT_MS,
+    '后端API请求'
+  );
 
   if (!response.ok) {
     let detail = '';
@@ -353,13 +362,18 @@ async function parseKuaishouWithBackend(url: string): Promise<ParseResult> {
     payload.proxy = proxy;
   }
 
-  const response = await fetch(`${backendUrl}/detail/`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await fetchWithTimeout(
+    `${backendUrl}/detail/`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(payload),
     },
-    body: JSON.stringify(payload),
-  });
+    DEFAULT_UPSTREAM_TIMEOUT_MS,
+    '快手后端API请求'
+  );
 
   if (!response.ok) {
     let detail = '';
@@ -380,6 +394,62 @@ async function parseKuaishouWithBackend(url: string): Promise<ParseResult> {
   }
 
   return transformKuaishouBackendData(apiData.data);
+}
+
+function resolveUpstreamTimeoutMs(): number {
+  const raw = Number.parseInt(process.env.PARSE_UPSTREAM_TIMEOUT_MS || '', 10);
+  if (Number.isNaN(raw)) {
+    return 8_000;
+  }
+
+  if (raw < 1_000) {
+    return 1_000;
+  }
+
+  if (raw > 60_000) {
+    return 60_000;
+  }
+
+  return raw;
+}
+
+function isAbortError(error: unknown): boolean {
+  if (error instanceof DOMException) {
+    return error.name === 'AbortError';
+  }
+
+  if (typeof error === 'object' && error !== null && 'name' in error) {
+    const name = (error as { name?: string }).name;
+    return name === 'AbortError';
+  }
+
+  return false;
+}
+
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit | undefined,
+  timeoutMs: number,
+  timeoutLabel: string
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => {
+    controller.abort();
+  }, timeoutMs);
+
+  try {
+    return await fetch(url, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error: unknown) {
+    if (isAbortError(error)) {
+      throw new Error(`${timeoutLabel}超时: ${timeoutMs}ms`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function transformBackendData(apiData: unknown, platform: string): ParseResult {

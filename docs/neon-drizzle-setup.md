@@ -29,6 +29,7 @@ DIRECT_URL=postgresql://xxx:xxx@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmo
 ```env
 DATABASE_URL=...
 DIRECT_URL=...
+PARSE_UPSTREAM_TIMEOUT_MS=8000
 
 BILLING_ENABLED=true
 BILLING_EXPERIMENT_ENABLED=true
