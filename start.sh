@@ -12,6 +12,6 @@ echo "     已清理所有旧进程"
 echo ""
 
 echo "[2/3] 启动开发服务器..."
-echo "     �访问地址: http://localhost:3001"
+echo "     访问地址: http://localhost:3001"
 echo ""
 pnpm dev
