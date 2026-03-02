@@ -4,15 +4,55 @@ import type { ParseResult } from '@/types';
 import { parseXiaohongshuNoCookie } from '@/lib/xiaohongshu/parser';
 import { parseKuaishouNoCookie } from '@/lib/kuaishou/parser';
 import { trackServerEvent } from '@/lib/serverAnalytics';
+import { applyRateLimit, getRateLimitHeaders, getRateLimitKey } from '@/lib/rateLimit';
 
 type AnyObject = Record<string, unknown>;
 type Platform = 'douyin' | 'tiktok' | 'kuaishou' | 'xiaohongshu' | 'bilibili' | 'unknown';
-type FailReason = 'invalid_input' | 'parse_rejected' | 'upstream_unavailable' | 'timeout' | 'unknown';
+type FailReason =
+  | 'invalid_input'
+  | 'parse_rejected'
+  | 'upstream_unavailable'
+  | 'timeout'
+  | 'rate_limited'
+  | 'unknown';
 
 export async function POST(request: NextRequest) {
   const startedAt = Date.now();
   const traceId = randomUUID();
   let platform: Platform = 'unknown';
+  const rateLimitResult = applyRateLimit({
+    key: getRateLimitKey(request, 'api_parse'),
+    maxRequests: readPositiveInt(process.env.PARSE_RATE_LIMIT_MAX, 30),
+    windowMs: readPositiveInt(process.env.PARSE_RATE_LIMIT_WINDOW_MS, 60_000),
+  });
+  const rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
+
+  if (!rateLimitResult.allowed) {
+    await trackServerEvent({
+      event: 'parse_fail',
+      distinctId: traceId,
+      properties: {
+        platform,
+        status_code: 429,
+        fail_reason: 'rate_limited',
+        duration_ms: Date.now() - startedAt,
+      },
+    });
+
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Too many requests, please try again later.',
+      },
+      {
+        status: 429,
+        headers: {
+          ...rateLimitHeaders,
+          'Retry-After': String(rateLimitResult.retryAfterSeconds),
+        },
+      }
+    );
+  }
 
   try {
     const body = (await request.json()) as { url?: string };
@@ -29,7 +69,13 @@ export async function POST(request: NextRequest) {
           duration_ms: Date.now() - startedAt,
         },
       });
-      return NextResponse.json({ error: '请提供链接' }, { status: 400 });
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Please provide a valid link.',
+        },
+        { status: 400, headers: rateLimitHeaders }
+      );
     }
 
     platform = detectPlatform(url);
@@ -64,8 +110,8 @@ export async function POST(request: NextRequest) {
               throw xhsError;
             }
 
-            const backendMessage = getErrorMessage(backendError, '后端解析失败');
-            const xhsMessage = getErrorMessage(xhsError, '无 Cookie 解析失败');
+            const backendMessage = getErrorMessage(backendError, 'Backend parse failed');
+            const xhsMessage = getErrorMessage(xhsError, 'No-cookie parse failed');
             throw new Error(`${backendMessage}; ${xhsMessage}`);
           }
         }
@@ -81,8 +127,8 @@ export async function POST(request: NextRequest) {
             result = await parseKuaishouWithBackend(url);
             mode = 'backend';
           } catch (backendError: unknown) {
-            const noCookieMessage = getErrorMessage(noCookieError, '无 Cookie 解析失败');
-            const backendMessage = getErrorMessage(backendError, '快手后端解析失败');
+            const noCookieMessage = getErrorMessage(noCookieError, 'No-cookie parse failed');
+            const backendMessage = getErrorMessage(backendError, 'Kuaishou backend parse failed');
             throw new Error(`${noCookieMessage}; ${backendMessage}`);
           }
         }
@@ -97,7 +143,7 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        throw new Error(`暂不支持该平台: ${url}`);
+        throw new Error(`Unsupported platform: ${url}`);
     }
 
     await trackServerEvent({
@@ -112,14 +158,17 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      success: true,
-      data: result,
-      mode,
-      platform,
-    });
+    return NextResponse.json(
+      {
+        success: true,
+        data: result,
+        mode,
+        platform,
+      },
+      { headers: rateLimitHeaders }
+    );
   } catch (error: unknown) {
-    const message = getErrorMessage(error, '解析失败');
+    const message = getErrorMessage(error, 'Parse failed');
     const status = getErrorStatus(message);
 
     console.error('[parse] error:', message);
@@ -140,7 +189,7 @@ export async function POST(request: NextRequest) {
         success: false,
         error: message,
       },
-      { status }
+      { status, headers: rateLimitHeaders }
     );
   }
 }
@@ -155,29 +204,53 @@ function getErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+function readPositiveInt(raw: string | undefined, fallback: number): number {
+  if (!raw) {
+    return fallback;
+  }
+
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isFinite(parsed) || parsed <= 0) {
+    return fallback;
+  }
+
+  return parsed;
+}
+
 function getErrorStatus(message: string): number {
-  if (message.includes('请提供链接') || message.includes('暂不支持')) {
+  const lower = message.toLowerCase();
+
+  if (lower.includes('too many requests')) {
+    return 429;
+  }
+
+  if (
+    lower.includes('please provide') ||
+    lower.includes('invalid') ||
+    lower.includes('unsupported') ||
+    lower.includes('not support')
+  ) {
     return 400;
   }
 
   if (
-    message.includes('无法从') ||
-    message.includes('未提取到') ||
-    message.includes('提取作品链接失败') ||
-    message.includes('获取作品数据失败') ||
-    message.includes('Failed to extract works link') ||
-    message.includes('Failed to retrieve works data') ||
-    message.includes('无效') ||
-    message.includes('仅支持在小红书 APP 内查看')
+    lower.includes('failed to extract') ||
+    lower.includes('failed to retrieve') ||
+    lower.includes('unable to extract') ||
+    lower.includes('not found')
   ) {
     return 422;
   }
 
+  if (lower.includes('timeout')) {
+    return 504;
+  }
+
   if (
-    message.includes('后端API错误') ||
-    message.includes('快手后端API错误') ||
-    message.includes('fetch failed') ||
-    message.includes('ECONNREFUSED')
+    lower.includes('api error') ||
+    lower.includes('fetch failed') ||
+    lower.includes('econnrefused') ||
+    lower.includes('service unavailable')
   ) {
     return 503;
   }
@@ -188,37 +261,38 @@ function getErrorStatus(message: string): number {
 function mapFailReason(message: string, status: number): FailReason {
   const lower = message.toLowerCase();
 
+  if (status === 429 || lower.includes('too many requests')) {
+    return 'rate_limited';
+  }
+
   if (
     status === 400 ||
-    lower.includes('请提供链接') ||
-    lower.includes('暂不支持') ||
-    lower.includes('请输入') ||
-    lower.includes('无效')
+    lower.includes('please provide') ||
+    lower.includes('invalid') ||
+    lower.includes('unsupported')
   ) {
     return 'invalid_input';
   }
 
   if (
     status === 422 ||
-    lower.includes('无法从') ||
-    lower.includes('未提取到') ||
-    lower.includes('提取') ||
-    lower.includes('仅支持在小红书 app')
+    lower.includes('failed to extract') ||
+    lower.includes('failed to retrieve') ||
+    lower.includes('unable to extract')
   ) {
     return 'parse_rejected';
   }
 
   if (
     status === 503 ||
-    lower.includes('后端api错误') ||
-    lower.includes('快手后端api错误') ||
+    lower.includes('api error') ||
     lower.includes('fetch failed') ||
     lower.includes('econnrefused')
   ) {
     return 'upstream_unavailable';
   }
 
-  if (lower.includes('timeout') || lower.includes('超时')) {
+  if (status === 504 || lower.includes('timeout')) {
     return 'timeout';
   }
 
@@ -273,12 +347,12 @@ async function parseDouyinNoCookie(url: string): Promise<ParseResult> {
 
   const id = await extractIdFromUrl(cleanUrl);
   if (!id) {
-    throw new Error('无法提取视频ID');
+    throw new Error('Failed to extract video ID');
   }
 
   const data = await parse(id);
   if (!data) {
-    throw new Error('解析失败');
+    throw new Error('Parse failed');
   }
 
   return transformNoCookieResult(data);
@@ -300,7 +374,7 @@ async function parseWithBackend(url: string, platform: string): Promise<ParseRes
     } catch {
       // ignore
     }
-    throw new Error(`后端API错误: ${response.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
+    throw new Error(`Backend API error: ${response.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
   }
 
   const apiData: unknown = await response.json();
@@ -335,14 +409,14 @@ async function parseKuaishouWithBackend(url: string): Promise<ParseResult> {
     } catch {
       // ignore
     }
-    throw new Error(`快手后端API错误: ${response.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
+    throw new Error(`Kuaishou backend API error: ${response.status}${detail ? ` ${detail.slice(0, 200)}` : ''}`);
   }
 
   const apiData = (await response.json()) as AnyObject;
   if (!apiData?.data) {
     throw new Error(
       pickFirstString(apiData, ['message', 'detail']) ||
-        '未提取到快手作品详情'
+        'Failed to extract Kuaishou post details'
     );
   }
 
@@ -357,12 +431,12 @@ function transformBackendData(apiData: unknown, platform: string): ParseResult {
   const root = asObject(apiData);
   const awemeDetail = asObject(root?.data);
   if (!awemeDetail) {
-    throw new Error('API 返回数据格式不正确');
+    throw new Error('Backend API returned an invalid payload.');
   }
 
   const video = asObject(awemeDetail.video);
   const author = asObject(awemeDetail.author);
-  const desc = pickFirstString(awemeDetail, ['desc', 'title']) || `${platform}内容`;
+  const desc = pickFirstString(awemeDetail, ['desc', 'title']) || `${platform} content`;
 
   const rawImages = asArray(awemeDetail.images) || [];
   const images = rawImages
@@ -381,7 +455,7 @@ function transformBackendData(apiData: unknown, platform: string): ParseResult {
       title: desc,
       cover: images[0] || '',
       author: {
-        name: pickFirstString(author, ['nickname']) || '未知用户',
+        name: pickFirstString(author, ['nickname']) || 'Unknown user',
         avatar: sanitizeMediaUrl(extractUrlFromUnknown(asObject(author?.avatar_thumb)?.url_list)),
       },
       images,
@@ -395,7 +469,7 @@ function transformBackendData(apiData: unknown, platform: string): ParseResult {
 
   const noWatermarkUrl = sanitizeMediaUrl(playUrl.replace('playwm', 'play'));
   if (!noWatermarkUrl) {
-    throw new Error('未提取到视频资源');
+    throw new Error('Failed to extract video resource');
   }
 
   return {
@@ -403,7 +477,7 @@ function transformBackendData(apiData: unknown, platform: string): ParseResult {
     title: desc,
     cover: sanitizeMediaUrl(extractUrlFromUnknown(asObject(video?.cover)?.url_list)),
     author: {
-      name: pickFirstString(author, ['nickname']) || '未知用户',
+      name: pickFirstString(author, ['nickname']) || 'Unknown user',
       avatar: sanitizeMediaUrl(extractUrlFromUnknown(asObject(author?.avatar_thumb)?.url_list)),
     },
     videoUrl: noWatermarkUrl,
@@ -415,11 +489,11 @@ function transformKuaishouBackendData(apiData: unknown): ParseResult {
   const root = asObject(dataObj?.data) ?? dataObj;
 
   if (!root) {
-    throw new Error('未提取到快手作品详情');
+    throw new Error('Failed to extract Kuaishou post details');
   }
 
-  const title = pickFirstString(root, ['caption', 'title', 'desc']) || '快手作品';
-  const authorName = pickFirstString(root, ['name', 'userName']) || '未知用户';
+  const title = pickFirstString(root, ['caption', 'title', 'desc']) || 'Kuaishou post';
+  const authorName = pickFirstString(root, ['name', 'userName']) || 'Unknown user';
   const authorAvatar = sanitizeMediaUrl(pickMediaValue(root, ['headUrls', 'avatar', 'avatarUrl', 'headUrl']));
 
   const mediaUrls = extractKuaishouDownloadUrls(root)
@@ -433,7 +507,7 @@ function transformKuaishouBackendData(apiData: unknown): ParseResult {
   const rawType = pickFirstString(root, ['photoType', 'type']).toLowerCase();
   const isImagePost =
     mediaUrls.length > 1 ||
-    rawType.includes('图') ||
+    rawType.includes('image') ||
     rawType.includes('atlas') ||
     Boolean(asArray(asObject(root.atlas)?.list)?.length);
 
@@ -441,7 +515,7 @@ function transformKuaishouBackendData(apiData: unknown): ParseResult {
     const images = mediaUrls.length > 0 ? mediaUrls : cover ? [cover] : [];
 
     if (images.length === 0) {
-      throw new Error('未提取到快手图片资源');
+      throw new Error('Failed to extract Kuaishou image resources');
     }
 
     return {
@@ -461,7 +535,7 @@ function transformKuaishouBackendData(apiData: unknown): ParseResult {
     sanitizeMediaUrl(pickMediaValue(root, ['mp4Url', 'photoUrl', 'videoUrl']));
 
   if (!videoUrl) {
-    throw new Error('未提取到快手视频资源');
+    throw new Error('Failed to extract Kuaishou video resource');
   }
 
   return {
@@ -504,7 +578,7 @@ function extractKuaishouDownloadUrls(payload: unknown): string[] {
 function transformXiaohongshuBackendData(apiData: unknown): ParseResult {
   const root = asObject(asObject(apiData)?.data) ?? asObject(apiData);
   if (!root) {
-    throw new Error('小红书后端返回为空');
+    throw new Error('Xiaohongshu backend returned an empty payload.');
   }
 
   const payloadCandidates: unknown[] = [
@@ -524,13 +598,13 @@ function transformXiaohongshuBackendData(apiData: unknown): ParseResult {
   const title =
     pickFirstString(payload, ['title', 'desc', 'note_desc', 'content']) ||
     pickFirstString(root, ['title', 'desc']) ||
-    '小红书内容';
+    'Xiaohongshu content';
 
   const authorName =
     pickFirstString(asObject(payload)?.author, ['nickname', 'name']) ||
     pickFirstString(asObject(payload)?.user, ['nickname', 'name']) ||
     pickFirstString(root.author, ['nickname', 'name']) ||
-    '未知用户';
+    'Unknown user';
 
   const authorAvatar = sanitizeMediaUrl(
     firstNonEmpty([
@@ -572,7 +646,7 @@ function transformXiaohongshuBackendData(apiData: unknown): ParseResult {
     };
   }
 
-  throw new Error('小红书后端返回中未找到图片或视频资源');
+  throw new Error('No image or video resource found in Xiaohongshu backend response.');
 }
 
 function hasAnyMedia(obj: unknown): boolean {
@@ -757,7 +831,8 @@ function asArray(value: unknown): unknown[] | null {
 function isXiaohongshuUnsupportedByHybridBackend(error: unknown): boolean {
   const message = getErrorMessage(error, '');
   return (
-    message.includes('后端API错误: 400') ||
-    message.includes('后端API错误: 404')
+    message.includes('Backend API error: 400') ||
+    message.includes('Backend API error: 404')
   );
 }
+
