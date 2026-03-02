@@ -256,7 +256,8 @@ async function parseDouyinNoCookie(url: string): Promise<ParseResult> {
   const { extractIdFromUrl, parseDouyinNoCookie: parse, transformNoCookieResult } =
     await import('@/lib/no_cookie_parser');
 
-  const urlRegex = /(https?:\/\/)?(v\.douyin\.com|douyin\.com)\/[a-zA-Z0-9\/]+/;
+  // Keep full short-link path (including "_" and "-"), avoid truncating the token.
+  const urlRegex = /(https?:\/\/)?(v\.douyin\.com|douyin\.com)\/[^\s?#]+/i;
   const match = url.match(urlRegex);
   let cleanUrl = url;
 
