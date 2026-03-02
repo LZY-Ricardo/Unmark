@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import { Analytics } from '@vercel/analytics/next'
+import { PostHogInit } from '@/components/PostHogInit'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({
     <html lang="zh-CN">
       <body>
         {children}
+        <PostHogInit />
         <Analytics />
       </body>
     </html>

@@ -1,20 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { randomUUID } from 'crypto';
 import type { ParseResult } from '@/types';
 import { parseXiaohongshuNoCookie } from '@/lib/xiaohongshu/parser';
 import { parseKuaishouNoCookie } from '@/lib/kuaishou/parser';
+import { trackServerEvent } from '@/lib/serverAnalytics';
 
 type AnyObject = Record<string, unknown>;
+type Platform = 'douyin' | 'tiktok' | 'kuaishou' | 'xiaohongshu' | 'bilibili' | 'unknown';
+type FailReason = 'invalid_input' | 'parse_rejected' | 'upstream_unavailable' | 'timeout' | 'unknown';
 
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
+  const traceId = randomUUID();
+  let platform: Platform = 'unknown';
+
   try {
     const body = (await request.json()) as { url?: string };
     const url = typeof body?.url === 'string' ? body.url.trim() : '';
 
     if (!url) {
+      await trackServerEvent({
+        event: 'parse_fail',
+        distinctId: traceId,
+        properties: {
+          platform,
+          status_code: 400,
+          fail_reason: 'invalid_input',
+          duration_ms: Date.now() - startedAt,
+        },
+      });
       return NextResponse.json({ error: '请提供链接' }, { status: 400 });
     }
 
-    const platform = detectPlatform(url);
+    platform = detectPlatform(url);
+    await trackServerEvent({
+      event: 'parse_submit',
+      distinctId: traceId,
+      properties: {
+        platform,
+      },
+    });
+
     let result: ParseResult;
     let mode: 'backend' | 'no-cookie';
 
@@ -71,8 +97,20 @@ export async function POST(request: NextRequest) {
       }
 
       default:
-        return NextResponse.json({ error: `暂不支持该平台: ${url}` }, { status: 400 });
+        throw new Error(`暂不支持该平台: ${url}`);
     }
+
+    await trackServerEvent({
+      event: 'parse_success',
+      distinctId: traceId,
+      properties: {
+        platform,
+        result_type: result.type,
+        mode,
+        status_code: 200,
+        duration_ms: Date.now() - startedAt,
+      },
+    });
 
     return NextResponse.json({
       success: true,
@@ -85,6 +123,17 @@ export async function POST(request: NextRequest) {
     const status = getErrorStatus(message);
 
     console.error('[parse] error:', message);
+
+    await trackServerEvent({
+      event: 'parse_fail',
+      distinctId: traceId,
+      properties: {
+        platform,
+        status_code: status,
+        fail_reason: mapFailReason(message, status),
+        duration_ms: Date.now() - startedAt,
+      },
+    });
 
     return NextResponse.json(
       {
@@ -136,7 +185,47 @@ function getErrorStatus(message: string): number {
   return 500;
 }
 
-function detectPlatform(url: string): 'douyin' | 'tiktok' | 'kuaishou' | 'xiaohongshu' | 'bilibili' | 'unknown' {
+function mapFailReason(message: string, status: number): FailReason {
+  const lower = message.toLowerCase();
+
+  if (
+    status === 400 ||
+    lower.includes('请提供链接') ||
+    lower.includes('暂不支持') ||
+    lower.includes('请输入') ||
+    lower.includes('无效')
+  ) {
+    return 'invalid_input';
+  }
+
+  if (
+    status === 422 ||
+    lower.includes('无法从') ||
+    lower.includes('未提取到') ||
+    lower.includes('提取') ||
+    lower.includes('仅支持在小红书 app')
+  ) {
+    return 'parse_rejected';
+  }
+
+  if (
+    status === 503 ||
+    lower.includes('后端api错误') ||
+    lower.includes('快手后端api错误') ||
+    lower.includes('fetch failed') ||
+    lower.includes('econnrefused')
+  ) {
+    return 'upstream_unavailable';
+  }
+
+  if (lower.includes('timeout') || lower.includes('超时')) {
+    return 'timeout';
+  }
+
+  return 'unknown';
+}
+
+function detectPlatform(url: string): Platform {
   const lowerUrl = url.toLowerCase();
 
   if (lowerUrl.includes('douyin.com') || lowerUrl.includes('v.douyin.com')) {
