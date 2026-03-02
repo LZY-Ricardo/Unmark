@@ -6,17 +6,25 @@ import {
   resolveRequestIdentity,
 } from '@/lib/billing/identity';
 import { createOrder } from '@/lib/billing/order';
+import { isBillingPayChannel } from '@/lib/billing/payments/gateway';
 import { getBillingSnapshot } from '@/lib/billing/quota';
 import { ErrorCode } from '@/types';
-import type { PaidPlanType } from '@/types/billing';
+import type { BillingPayChannel, BillingPayScene, PaidPlanType } from '@/types/billing';
 
 interface CreateOrderBody {
   planType?: PaidPlanType;
+  payChannel?: BillingPayChannel;
+  payScene?: BillingPayScene;
+  returnUrl?: string;
   clientRequestId?: string;
 }
 
 function isPaidPlanType(value: string): value is PaidPlanType {
   return value === 'day' || value === 'month';
+}
+
+function isBillingPayScene(value: string): value is BillingPayScene {
+  return value === 'h5' || value === 'web' || value === 'qr';
 }
 
 export async function POST(request: NextRequest) {
@@ -34,6 +42,9 @@ export async function POST(request: NextRequest) {
 
     const body = (await request.json()) as CreateOrderBody;
     const planType = typeof body.planType === 'string' ? body.planType : '';
+    const payChannelRaw = typeof body.payChannel === 'string' ? body.payChannel : '';
+    const paySceneRaw = typeof body.payScene === 'string' ? body.payScene : '';
+    const returnUrl = typeof body.returnUrl === 'string' ? body.returnUrl.trim() : '';
     const clientRequestId =
       typeof body.clientRequestId === 'string' ? body.clientRequestId.trim() : '';
 
@@ -52,11 +63,28 @@ export async function POST(request: NextRequest) {
         400
       );
     }
+    if (payChannelRaw && !isBillingPayChannel(payChannelRaw)) {
+      throw new BillingError(
+        ErrorCode.ORDER_NOT_PAYABLE,
+        'Invalid pay channel',
+        400
+      );
+    }
+    if (paySceneRaw && !isBillingPayScene(paySceneRaw)) {
+      throw new BillingError(
+        ErrorCode.ORDER_NOT_PAYABLE,
+        'Invalid pay scene',
+        400
+      );
+    }
 
-    const order = await createOrder({
+    const result = await createOrder({
       userId: identity.userId,
       anonId: identity.anonId,
       planType,
+      payChannel: payChannelRaw || undefined,
+      payScene: paySceneRaw || undefined,
+      returnUrl: returnUrl || undefined,
       clientRequestId,
     });
 
@@ -64,14 +92,14 @@ export async function POST(request: NextRequest) {
     const response = NextResponse.json({
       success: true,
       data: {
-        orderNo: order.orderNo,
-        amountCents: order.amountCents,
-        orderStatus: order.status,
-        payChannel: order.payChannel,
+        orderNo: result.order.orderNo,
+        amountCents: result.order.amountCents,
+        orderStatus: result.order.status,
+        payChannel: result.order.payChannel,
         activePlan: snapshot.activePlan,
-        paymentPayload: {
-          mockToken: `pay_${order.orderNo}`,
-        },
+        providerOrderNo: result.payment.providerOrderNo,
+        paymentExpiresAt: result.payment.expiresAt,
+        paymentPayload: result.payment.paymentPayload,
       },
     });
     applyIdentityCookie(response, identity);

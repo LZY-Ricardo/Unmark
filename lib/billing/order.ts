@@ -1,5 +1,9 @@
 import { getBillingConfig } from '@/lib/billing/config';
 import { BillingError } from '@/lib/billing/errors';
+import {
+  createPaymentForOrder,
+  resolveOrderPayChannel,
+} from '@/lib/billing/payments/gateway';
 import { getPlanPriceCents } from '@/lib/billing/pricing';
 import {
   createOrderRecord,
@@ -12,7 +16,13 @@ import {
 } from '@/lib/billing/storage';
 import { getBillingSnapshot } from '@/lib/billing/quota';
 import { ErrorCode } from '@/types';
-import type { BillingOrderRecord, PaidPlanType } from '@/types/billing';
+import type {
+  BillingOrderRecord,
+  BillingPayChannel,
+  BillingPayScene,
+  PaidPlanType,
+} from '@/types/billing';
+import type { CreatePaymentResult } from '@/lib/billing/payments/types';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MONTH_MS = 30 * DAY_MS;
@@ -89,15 +99,39 @@ async function fulfillOrderInternal(
   return fulfilledOrder;
 }
 
+function asCreatePaymentResultFromExisting(order: BillingOrderRecord): CreatePaymentResult {
+  const status = order.status === 'fulfilled' ? 'succeeded' : 'requires_action';
+  return {
+    payChannel: order.payChannel,
+    providerOrderNo: order.orderNo,
+    status,
+    transactionId: order.transactionId,
+    paymentPayload: {
+      reusedOrder: true,
+    },
+  };
+}
+
+export interface CreateOrderResult {
+  order: BillingOrderRecord;
+  payment: CreatePaymentResult;
+}
+
 export async function createOrder(params: {
   userId: number;
   anonId: string;
   planType: PaidPlanType;
+  payChannel?: BillingPayChannel;
+  payScene?: BillingPayScene;
+  returnUrl?: string;
   clientRequestId: string;
-}): Promise<BillingOrderRecord> {
+}): Promise<CreateOrderResult> {
   const existing = await getOrderByClientRequestId(params.clientRequestId);
   if (existing) {
-    return existing;
+    return {
+      order: existing,
+      payment: asCreatePaymentResultFromExisting(existing),
+    };
   }
 
   const snapshot = await getBillingSnapshot(params.userId, params.anonId);
@@ -111,22 +145,36 @@ export async function createOrder(params: {
 
   const amountCents = getPlanPriceCents(snapshot.variant, params.planType);
   const config = getBillingConfig();
+  const payChannel = resolveOrderPayChannel(params.payChannel);
   const order = await createOrderRecord({
     userId: params.userId,
     planType: params.planType,
     amountCents,
     variant: snapshot.variant,
     experimentId: config.experimentId,
+    payChannel,
     clientRequestId: params.clientRequestId,
   });
 
-  if (config.webhookEnabled) {
-    const pendingOrder: BillingOrderRecord = { ...order, status: 'paying' };
-    await saveOrder(pendingOrder);
-    return pendingOrder;
+  const payment = await createPaymentForOrder(order, {
+    scene: params.payScene,
+    returnUrl: params.returnUrl,
+  });
+  if (payment.status === 'succeeded') {
+    const transactionId = payment.transactionId || `pay_${order.orderNo}`;
+    const fulfilled = await fulfillOrderInternal(order, transactionId);
+    return {
+      order: fulfilled,
+      payment,
+    };
   }
 
-  return fulfillOrderInternal(order, `mock_${order.orderNo}`);
+  const pendingOrder: BillingOrderRecord = { ...order, status: 'paying' };
+  await saveOrder(pendingOrder);
+  return {
+    order: pendingOrder,
+    payment,
+  };
 }
 
 export async function refreshOrder(orderNo: string): Promise<BillingOrderRecord> {
@@ -138,11 +186,13 @@ export async function refreshOrder(orderNo: string): Promise<BillingOrderRecord>
 }
 
 export async function processPaymentWebhook(params: {
+  payChannel: BillingPayChannel;
   orderNo: string;
   transactionId: string;
   eventType: string;
+  paidAmountCents?: number;
 }): Promise<BillingOrderRecord> {
-  const key = `${params.transactionId}:${params.eventType}`;
+  const key = `${params.payChannel}:${params.transactionId}:${params.eventType}`;
   if (!(await markWebhookProcessedOnce(key))) {
     const existing = await getOrderByNo(params.orderNo);
     if (!existing) {
@@ -154,6 +204,33 @@ export async function processPaymentWebhook(params: {
   const order = await getOrderByNo(params.orderNo);
   if (!order) {
     throw new BillingError(ErrorCode.ORDER_NOT_FOUND, 'Order not found', 404);
+  }
+  if (order.payChannel !== params.payChannel) {
+    throw new BillingError(
+      ErrorCode.WEBHOOK_SIGNATURE_INVALID,
+      'Webhook pay channel mismatch',
+      409
+    );
+  }
+  if (
+    typeof params.paidAmountCents === 'number' &&
+    params.paidAmountCents !== order.amountCents
+  ) {
+    throw new BillingError(
+      ErrorCode.WEBHOOK_SIGNATURE_INVALID,
+      'Webhook amount mismatch',
+      409
+    );
+  }
+
+  const eventType = params.eventType.toLowerCase();
+  const isPaidEvent =
+    eventType.includes('success') ||
+    eventType.includes('finished') ||
+    eventType.includes('paid');
+
+  if (!isPaidEvent) {
+    return order;
   }
 
   return fulfillOrderInternal(order, params.transactionId);

@@ -1,7 +1,7 @@
 CREATE TYPE "billing_plan_type" AS ENUM ('free', 'day', 'month');
 CREATE TYPE "billing_order_status" AS ENUM ('created', 'paying', 'paid', 'fulfilled', 'failed', 'refunded');
 CREATE TYPE "billing_entitlement_status" AS ENUM ('active', 'expired', 'revoked');
-CREATE TYPE "billing_pay_channel" AS ENUM ('mock');
+CREATE TYPE "billing_pay_channel" AS ENUM ('mock', 'alipay', 'wechat');
 
 CREATE TABLE "billing_users" (
   "id" serial PRIMARY KEY NOT NULL,

@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { withClientAnonHeader } from '@/lib/billing/clientIdentity';
-import type { BillingSnapshot, PaidPlanType, PaywallDetails } from '@/types/billing';
+import type {
+  BillingPayChannel,
+  BillingSnapshot,
+  PaidPlanType,
+  PaywallDetails,
+} from '@/types/billing';
 
 interface BillingStore {
   isPaywallOpen: boolean;
@@ -12,7 +17,10 @@ interface BillingStore {
   fetchEntitlement: () => Promise<void>;
   openPaywall: (details?: PaywallDetails) => Promise<void>;
   closePaywall: () => void;
-  purchasePlan: (planType: PaidPlanType) => Promise<{ success: boolean; message?: string }>;
+  purchasePlan: (
+    planType: PaidPlanType,
+    payChannel?: BillingPayChannel
+  ) => Promise<{ success: boolean; message?: string }>;
 }
 
 function createClientRequestId(): string {
@@ -82,7 +90,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
     set({ isPaywallOpen: false });
   },
 
-  purchasePlan: async (planType: PaidPlanType) => {
+  purchasePlan: async (planType: PaidPlanType, payChannel?: BillingPayChannel) => {
     set({ isPurchasing: true, error: null });
 
     try {
@@ -93,6 +101,7 @@ export const useBillingStore = create<BillingStore>((set, get) => ({
         }),
         body: JSON.stringify({
           planType,
+          payChannel,
           clientRequestId: createClientRequestId(),
         }),
       });

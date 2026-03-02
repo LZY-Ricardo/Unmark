@@ -48,6 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     const order = await processPaymentWebhook({
+      payChannel: 'mock',
       orderNo,
       transactionId,
       eventType,

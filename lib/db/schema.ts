@@ -30,7 +30,11 @@ export const billingEntitlementStatusEnum = pgEnum(
   'billing_entitlement_status',
   ['active', 'expired', 'revoked']
 );
-export const billingPayChannelEnum = pgEnum('billing_pay_channel', ['mock']);
+export const billingPayChannelEnum = pgEnum('billing_pay_channel', [
+  'mock',
+  'alipay',
+  'wechat',
+]);
 
 export const billingUsers = pgTable(
   'billing_users',

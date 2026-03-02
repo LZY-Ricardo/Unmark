@@ -10,6 +10,7 @@ import {
 import type {
   BillingEntitlementRecord,
   BillingOrderRecord,
+  BillingPayChannel,
   PaidPlanType,
 } from '@/types/billing';
 
@@ -77,7 +78,7 @@ function toBillingOrderRecord(row: typeof billingOrders.$inferSelect): BillingOr
     status: row.status,
     variant: row.variant as BillingOrderRecord['variant'],
     experimentId: row.experimentId,
-    payChannel: 'mock',
+    payChannel: row.payChannel as BillingPayChannel,
     clientRequestId: row.clientRequestId,
     transactionId: row.transactionId ?? undefined,
     createdAt: toIso(row.createdAt),
@@ -462,6 +463,7 @@ export async function createOrderRecord(input: {
   amountCents: number;
   variant: BillingOrderRecord['variant'];
   experimentId: string;
+  payChannel: BillingPayChannel;
   clientRequestId: string;
 }): Promise<BillingOrderRecord> {
   const order: BillingOrderRecord = {
@@ -473,7 +475,7 @@ export async function createOrderRecord(input: {
     status: 'created',
     variant: input.variant,
     experimentId: input.experimentId,
-    payChannel: 'mock',
+    payChannel: input.payChannel,
     clientRequestId: input.clientRequestId,
     createdAt: nowIso(),
   };

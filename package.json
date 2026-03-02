@@ -13,9 +13,12 @@
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "smoke:billing": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-billing.ps1"
+    "smoke:billing": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-billing.ps1",
+    "smoke:alipay:order": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-alipay-order.ps1",
+    "smoke:alipay:order:open": "powershell -NoProfile -ExecutionPolicy Bypass -File ./scripts/smoke-alipay-order.ps1 -OpenBrowser"
   },
   "dependencies": {
+    "alipay-sdk": "^4.14.0",
     "drizzle-orm": "^0.45.1",
     "next": "^15.1.0",
     "postgres": "^3.4.8",
@@ -32,6 +35,7 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
     "clsx": "^2.1.0",
+    "dotenv": "^17.3.1",
     "drizzle-kit": "^0.31.9",
     "eslint": "^8",
     "eslint-config-next": "^15.1.0",

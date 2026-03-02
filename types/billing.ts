@@ -1,6 +1,8 @@
 export type BillingPlanType = 'free' | 'day' | 'month';
 export type PaidPlanType = 'day' | 'month';
 export type BillingVariant = 'A' | 'B';
+export type BillingPayChannel = 'mock' | 'alipay' | 'wechat';
+export type BillingPayScene = 'h5' | 'web' | 'qr';
 export type BillingOrderStatus =
   | 'created'
   | 'paying'
@@ -33,7 +35,7 @@ export interface BillingOrderRecord {
   status: BillingOrderStatus;
   variant: BillingVariant;
   experimentId: string;
-  payChannel: 'mock';
+  payChannel: BillingPayChannel;
   clientRequestId: string;
   transactionId?: string;
   createdAt: string;

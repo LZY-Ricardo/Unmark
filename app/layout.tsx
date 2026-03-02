@@ -1,9 +1,13 @@
-import type { Metadata } from 'next'
+﻿import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Unmark - 抖音/小红书/快手无水印解析',
   description: '输入抖音、小红书或快手链接，一键解析下载无水印视频和图集',
+  icons: {
+    icon: '/icon.svg',
+    shortcut: '/icon.svg',
+  },
 }
 
 export default function RootLayout({
