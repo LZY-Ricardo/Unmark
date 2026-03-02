@@ -168,9 +168,9 @@ export default function DebugPage() {
           padding: '10px',
           overflow: 'auto'
         }}>
-curl -X POST http://localhost:3004/api/parse-no-cookie \
-  -H "Content-Type: application/json" \
-  -d '{{"url":"https://v.douyin.com/4evJ3qVn5HA/"}}'
+{`curl -X POST http://localhost:3004/api/parse-no-cookie \\
+  -H "Content-Type: application/json" \\
+  -d '{"url":"https://v.douyin.com/4evJ3qVn5HA/"}'`}
         </pre>
       </div>
     </div>
