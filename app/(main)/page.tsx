@@ -1,5 +1,6 @@
-'use client';
+﻿'use client';
 
+import { useEffect } from 'react';
 import { ParseInput } from '@/components/ParseInput';
 import { VideoCard } from '@/components/VideoCard';
 import { ImageGrid } from '@/components/ImageGrid';
@@ -8,7 +9,6 @@ import { Button } from '@/components/ui/Button';
 import { useSponsorPrompt } from '@/hooks/useSponsorPrompt';
 import { useParseStore } from '@/stores/parseStore';
 import { useToastStore } from '@/stores/toastStore';
-import { useEffect } from 'react';
 
 export default function HomePage() {
   const { result, error } = useParseStore();
@@ -23,7 +23,6 @@ export default function HomePage() {
     handleDownloadAction,
   } = useSponsorPrompt();
 
-  // 显示错误提示
   useEffect(() => {
     if (error) {
       addToast(error, 'error');
@@ -59,19 +58,24 @@ export default function HomePage() {
 
           <section className="mb-8 md:mb-10">
             <ParseInput onParseAction={handleParseAction} />
-            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+            <div className="mt-5 relative flex flex-col items-center gap-2 text-center">
+              <div className="pointer-events-none absolute -top-3 h-14 w-56 rounded-full bg-[#ff7a3a]/30 blur-2xl" />
               <Button
                 type="button"
-                variant="secondary"
-                size="sm"
-                className="min-w-[140px]"
+                variant="primary"
+                size="md"
+                className="group relative min-w-[180px] border border-[#ff9a6426] bg-gradient-to-r from-[#ff8a3d] via-[#ff6b52] to-[#ff4d6d] text-white shadow-[0_16px_34px_-16px_rgba(255,108,76,0.9)] animate-sponsor-pulse hover:scale-[1.03] hover:shadow-[0_20px_40px_-16px_rgba(255,88,88,0.95)]"
                 onClick={openManualPrompt}
               >
+                <svg className="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8.5l1.8 3.65 4.03.58-2.91 2.84.69 4.01L12 17.7l-3.61 1.88.69-4.01-2.91-2.84 4.03-.58L12 8.5z" />
+                </svg>
                 赞助支持
+                <span className="absolute -top-2 -right-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-[#ff5c4a] shadow-[0_8px_18px_-12px_rgba(255,92,74,0.9)]">
+                  免费维护中
+                </span>
               </Button>
-              <p className="text-xs text-text-secondary">
-                喜欢这个工具的话，欢迎支持服务器和带宽成本
-              </p>
+              <p className="text-xs font-medium text-[#8a4a32]">喜欢这个工具的话，欢迎支持服务器和带宽成本</p>
             </div>
           </section>
 
@@ -113,13 +117,14 @@ export default function HomePage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                   </svg>
                 </div>
-                <h3 className="font-semibold text-primary mb-1.5">数据轻量</h3>
-                <p className="text-sm text-text-secondary">无需登录扫码，不做长期内容缓存，流程更直接。</p>
+                <h3 className="font-semibold text-primary mb-1.5">流程轻量</h3>
+                <p className="text-sm text-text-secondary">无需登录扫码，不做长期缓存，打开即用。</p>
               </article>
             </section>
           )}
         </div>
       </div>
+
       <SponsorModal
         isOpen={isOpen}
         source={triggerSource}
@@ -127,5 +132,5 @@ export default function HomePage() {
         onSponsorClick={recordSponsorClick}
       />
     </main>
-  )
+  );
 }
