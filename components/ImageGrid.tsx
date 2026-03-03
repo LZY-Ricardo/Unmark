@@ -8,9 +8,10 @@ import { downloadImage } from '@/lib/utils';
 
 interface ImageGridProps {
   result: ImagesResult;
+  onDownloadAction?: () => void;
 }
 
-export function ImageGrid({ result }: ImageGridProps) {
+export function ImageGrid({ result, onDownloadAction }: ImageGridProps) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
   const [downloadingIndex, setDownloadingIndex] = useState<number | null>(null);
@@ -19,7 +20,15 @@ export function ImageGrid({ result }: ImageGridProps) {
 
   const activeImage = result.images[activeIndex] || result.cover || result.images[0] || '';
 
-  const handleDownloadSingle = async (imageUrl: string, index: number) => {
+  const handleDownloadSingle = async (
+    imageUrl: string,
+    index: number,
+    options?: { notifySponsor?: boolean }
+  ) => {
+    if (options?.notifySponsor !== false) {
+      onDownloadAction?.();
+    }
+
     setDownloadingIndex(index);
     try {
       await downloadImage(imageUrl, result.title || 'douyin_images', index);
@@ -33,12 +42,13 @@ export function ImageGrid({ result }: ImageGridProps) {
   };
 
   const handleDownloadAll = async () => {
+    onDownloadAction?.();
     setDownloadingAll(true);
     setDownloadProgress(0);
 
     try {
       for (let i = 0; i < result.images.length; i++) {
-        await handleDownloadSingle(result.images[i], i);
+        await handleDownloadSingle(result.images[i], i, { notifySponsor: false });
         setDownloadProgress(i + 1);
         // 每张图片间隔 300ms，避免浏览器阻止多个下载
         await new Promise(resolve => setTimeout(resolve, 300));

@@ -6,7 +6,11 @@ import { Button } from './ui/Button';
 import { useParseStore } from '@/stores/parseStore';
 import { isValidSupportedUrl, extractSupportedUrl } from '@/lib/utils';
 
-export function ParseInput() {
+interface ParseInputProps {
+  onParseAction?: () => void;
+}
+
+export function ParseInput({ onParseAction }: ParseInputProps) {
   const [url, setUrl] = useState('');
   const [error, setError] = useState('');
   const { isLoading, parseUrl, reset } = useParseStore();
@@ -22,6 +26,8 @@ export function ParseInput() {
   }, []);
 
   const handleSubmit = async () => {
+    onParseAction?.();
+
     // 自动提取URL（支持粘贴完整分享口令）
     const extractedUrl = extractSupportedUrl(url);
 

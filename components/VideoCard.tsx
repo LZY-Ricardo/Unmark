@@ -7,10 +7,12 @@ import { downloadFile } from '@/lib/utils';
 
 interface VideoCardProps {
   result: VideoResult;
+  onDownloadAction?: () => void;
 }
 
-export function VideoCard({ result }: VideoCardProps) {
+export function VideoCard({ result, onDownloadAction }: VideoCardProps) {
   const handleDownload = () => {
+    onDownloadAction?.();
     const safeTitle = result.title.replace(/[<>:"/\\|?*]/g, '_').slice(0, 60);
     const filename = `${safeTitle || 'video'}.mp4`;
     downloadFile(result.videoUrl, filename);

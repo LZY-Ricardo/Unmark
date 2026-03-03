@@ -3,6 +3,9 @@
 import { ParseInput } from '@/components/ParseInput';
 import { VideoCard } from '@/components/VideoCard';
 import { ImageGrid } from '@/components/ImageGrid';
+import { SponsorModal } from '@/components/SponsorModal';
+import { Button } from '@/components/ui/Button';
+import { useSponsorPrompt } from '@/hooks/useSponsorPrompt';
 import { useParseStore } from '@/stores/parseStore';
 import { useToastStore } from '@/stores/toastStore';
 import { useEffect } from 'react';
@@ -10,6 +13,15 @@ import { useEffect } from 'react';
 export default function HomePage() {
   const { result, error } = useParseStore();
   const addToast = useToastStore((state) => state.addToast);
+  const {
+    isOpen,
+    triggerSource,
+    openManualPrompt,
+    closeModal,
+    recordSponsorClick,
+    handleParseAction,
+    handleDownloadAction,
+  } = useSponsorPrompt();
 
   // 显示错误提示
   useEffect(() => {
@@ -46,15 +58,29 @@ export default function HomePage() {
           </section>
 
           <section className="mb-8 md:mb-10">
-            <ParseInput />
+            <ParseInput onParseAction={handleParseAction} />
+            <div className="mt-4 flex flex-col items-center gap-2 text-center">
+              <Button
+                type="button"
+                variant="secondary"
+                size="sm"
+                className="min-w-[140px]"
+                onClick={openManualPrompt}
+              >
+                赞助支持
+              </Button>
+              <p className="text-xs text-text-secondary">
+                喜欢这个工具的话，欢迎支持服务器和带宽成本
+              </p>
+            </div>
           </section>
 
           {result && (
             <section className="mt-10 animate-gallery-enter">
               {result.type === 'video' ? (
-                <VideoCard result={result} />
+                <VideoCard result={result} onDownloadAction={handleDownloadAction} />
               ) : (
-                <ImageGrid result={result} />
+                <ImageGrid result={result} onDownloadAction={handleDownloadAction} />
               )}
             </section>
           )}
@@ -94,6 +120,12 @@ export default function HomePage() {
           )}
         </div>
       </div>
+      <SponsorModal
+        isOpen={isOpen}
+        source={triggerSource}
+        onClose={closeModal}
+        onSponsorClick={recordSponsorClick}
+      />
     </main>
   )
 }
