@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 import type { SponsorTriggerSource } from '@/hooks/useSponsorPrompt';
 
@@ -32,6 +32,13 @@ export function SponsorModal({
   onSponsorClick,
 }: SponsorModalProps) {
   const [activeMethod, setActiveMethod] = useState<'wechat' | 'alipay'>('wechat');
+
+  useEffect(() => {
+    [wechatQrImage, alipayQrImage].forEach((src) => {
+      const img = new Image();
+      img.src = src;
+    });
+  }, []);
 
   if (!isOpen) {
     return null;
